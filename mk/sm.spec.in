@@ -284,6 +284,9 @@ fi
 /opt/xensource/sm/xs_errors.py
 /opt/xensource/sm/xs_errors.pyc
 /opt/xensource/sm/xs_errors.pyo
+/opt/xensource/sm/xs_devs.py
+/opt/xensource/sm/xs_devs.pyc
+/opt/xensource/sm/xs_devs.pyo
 /opt/xensource/sm/wwid_conf.py
 /opt/xensource/sm/wwid_conf.pyc
 /opt/xensource/sm/wwid_conf.pyo
@@ -293,6 +296,7 @@ fi
 /sbin/mpathutil
 /etc/rc.d/init.d/sm-multipath
 %{_unitdir}/make-dummy-sr.service
+%config /etc/udev/rules.d/00-xs_devs.rules
 %config /etc/udev/rules.d/40-multipath.rules
 %config /etc/udev/rules.d/55-xs-mpath-scsidev.rules
 %config /etc/udev/rules.d/58-xapi.rules

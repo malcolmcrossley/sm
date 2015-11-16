@@ -1,0 +1,42 @@
+# These rules only apply to the 'block' subsystem
+SUBSYSTEM!="block", GOTO="end_xs_devs"
+
+# Device whitelist
+ACTION=="add|change" TEST=="/var/lib/xs_devs/list-white/$name", GOTO="jump_black"
+# ACTION=="add|change" KERNEL=="...", GOTO="jump_black"
+
+# Device blacklist
+ACTION=="add|change", TEST=="/var/lib/xs_devs/list-black/$name", GOTO="end_xs_devs"
+ACTION=="add|change", KERNEL=="ram*", GOTO="end_xs_devs"
+ACTION=="add|change", KERNEL=="loop*", GOTO="end_xs_devs"
+ACTION=="add|change", KERNEL=="sr*", GOTO="end_xs_devs"
+ACTION=="add|change", KERNEL=="td*", GOTO="end_xs_devs"
+
+LABEL="jump_black"
+
+# Handle device-mapper entries
+KERNEL=="dm-*", PROGRAM=="/opt/xensource/sm/xs_devs.py refresh %k"
+KERNEL=="dm-*", RESULT!="mpath", GOTO="end_xs_devs"
+
+# Tag block devices with :xs_dev:
+ACTION=="add|change", TAG+="xs_dev"
+
+# Clean up any device that is being removed
+ACTION=="remove", RUN+="/opt/xensource/sm/xs_devs.py untag %k", GOTO="end_xs_devs"
+
+# Skip any non-change actions from this point downwards
+ACTION!="change", GOTO="end_xs_devs"
+
+# Tag devices in use by XenServer
+TEST=="/var/lib/xs_devs/devs-xs/$name",    TAG+="inuse_xs", TAG!="inuse_melio", TAG!="inuse_mpath"
+TEST!="/var/lib/xs_devs/devs-xs/$name",    TAG-="inuse_xs"
+
+# Tag devices in use by Melio
+TEST=="/var/lib/xs_devs/devs-melio/$name", TAG+="inuse_melio", TAG!="inuse_xs", TAG!="inuse_mpath"
+TEST!="/var/lib/xs_devs/devs-melio/$name", TAG-="inuse_melio"
+
+# Tag devices in use by Multipath
+TEST=="/var/lib/xs_devs/devs-mpath/$name", TAG+="inuse_mpath", TAG!="inuse_xs", TAG!="inuse_melio"
+TEST!="/var/lib/xs_devs/devs-mpath/$name", TAG-="inuse_mpath"
+
+LABEL="end_xs_devs"
