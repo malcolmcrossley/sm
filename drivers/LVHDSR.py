@@ -34,6 +34,7 @@ import errno
 import xs_errors
 import cleanup
 import blktap2
+import xs_devs
 from journaler import Journaler
 from lock import Lock
 from refcounter import RefCounter
@@ -661,6 +662,21 @@ class LVHDSR(SR.SR):
             raise xs_errors.XenError('SRUnavailable', \
                     opterr='no such volume group: %s' % self.vgname)
 
+        # Tag devices with "inuse_xs"
+        tagged = []
+        for dev in self.root.split(','):
+            try:
+                xsdev = os.path.basename(os.path.realpath(dev))
+                util.SMlog("xs_devs tagging '%s' from '%s' with 'xs'" % (xsdev, dev))
+                xs_devs.tag_device(xsdev, "xs")
+                tagged.append(xsdev)
+            except:
+                util.SMlog("ERROR Tagging %s with 'xs'" % xsdev)
+                # Rollback any tags for this SR
+                for xsdev in tagged:
+                    xs_devs.untag_device(xsdev, "xs")
+                raise
+
         # Refresh the metadata status
         self._checkMetadataVolume()
 
@@ -771,6 +787,12 @@ class LVHDSR(SR.SR):
             except util.CommandException, inst:
                 util.SMlog("VG de-registration failed for %s with %d" % \
                            (uuid, inst.code))
+
+        # Untag devices
+        for dev in self.root.split(','):
+            xsdev = os.path.basename(os.path.realpath(dev))
+            util.SMlog("xs_devs untagging '%s' from '%s' with 'xs'" % (xsdev, dev))
+            xs_devs.untag_device(xsdev, "xs")
 
     def forget_vdi(self, uuid):
         if not self.legacyMode:

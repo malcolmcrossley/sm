@@ -24,6 +24,7 @@ import tempfile
 import errno
 import xs_errors
 import vhdutil
+import xs_devs
 from lock import Lock
 import cleanup
 
@@ -105,6 +106,21 @@ class EXTSR(FileSR.FileSR):
                   opterr='errno is %d' % inst.code)
             
     def attach(self, sr_uuid):
+        # Tag devices with "inuse_xs"
+        tagged = []
+        for dev in self.root.split(','):
+            try:
+                xsdev = os.path.basename(os.path.realpath(dev))
+                util.SMlog("xs_devs tagging '%s' from '%s' with 'xs'" % (xsdev, dev))
+                xs_devs.tag_device(xsdev, "xs")
+                tagged.append(xsdev)
+            except:
+                util.SMlog("ERROR Tagging %s with 'xs'" % xsdev)
+                # Rollback any tags for this SR
+                for xsdev in tagged:
+                    xs_devs.untag_device(xsdev, "xs")
+                raise
+
         if not self._checkmount():
             try:
                 #Activate LV
@@ -151,6 +167,12 @@ class EXTSR(FileSR.FileSR):
         except util.CommandException, inst:
             raise xs_errors.XenError('LVMUnMount', \
                   opterr='lvm -an failed errno is %d' % inst.code)
+
+        # Untag devices
+        for dev in self.root.split(','):
+            xsdev = os.path.basename(os.path.realpath(dev))
+            util.SMlog("xs_devs untagging '%s' from '%s' with 'xs'" % (xsdev, dev))
+            xs_devs.untag_device(xsdev, "xs")
 
     def probe(self):
         return lvutil.srlist_toxml(lvutil.scan_srlist(EXT_PREFIX, self.root),
